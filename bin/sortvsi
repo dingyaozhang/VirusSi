@@ -1,0 +1,18 @@
+use Getopt::Std;
+use vars qw($opt_i $opt_o);
+getopts('i:o:');
+
+open IN, "$opt_i" or die;
+open OUT, '>', "$opt_o" or die;
+my @input;
+while (<IN>) {
+	print OUT "$_" if $_ =~ m/^#/;
+	next if $_ =~ m/^#/;
+	chomp;
+	push @input, $_;
+}
+my @sorted = sort { (split(/\t/, $b))[3] <=> (split(/\t/, $a))[3] } @input;
+for my $var (@sorted) {
+	print OUT "$var\n";
+}
+close OUT;
