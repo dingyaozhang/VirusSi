@@ -4,9 +4,13 @@ use warnings;
 
 use Getopt::Std;
 use vars qw($opt_i $opt_o $opt_m $opt_t);
-getopts('i:o:m:t:');
+our $opt_p = 1;
+our $opt_u = 20;
+our $opt_w = 20000;
+getopts('i:o:m:t:p:u:w:');
 #perl code/evaluebyofftarget.pl -i ts2.txt -m off1.txt -t off22.txt -o trytest.txt
 use List::Util qw(max sum);
+
 
 my @partmatch;
 my @wholematch;
@@ -57,24 +61,44 @@ while (<IN>) {
 	my $mirmatchscore = $mirmatch[$indexi];
 	#print "$indexi\n";
 	$indexi += 1;
-	if ($wholematchscore >= 1) {
-		next;
+	if ($opt_p >= 0) {
+		if ($wholematchscore > $opt_p) {
+			next;
+		}else{
+			my $tempscore = ($opt_p-$wholematchscore)/($opt_p);
+			$offtargetscore = $offtargetscore*$tempscore;
+		}
 	}else{
-		my $tempscore = 1-$wholematchscore;
+		my $tempscore = (1-$wholematchscore)/(1);
 		$offtargetscore = $offtargetscore*$tempscore;
 	}
-	if ($partmatchscore >= 3) {
-		next;
+
+	
+	if ($opt_u >= 0) {
+		if ($partmatchscore > $opt_u) {
+			next;
+		}else{
+			my $tempscore = ($opt_u-$partmatchscore)/($opt_u);
+			$offtargetscore = $offtargetscore*$tempscore;
+		}
 	}else{
-		my $tempscore = (3-$wholematchscore)/3;
+		my $tempscore = (20-$partmatchscore)/(20);
 		$offtargetscore = $offtargetscore*$tempscore;
 	}
-	if ($mirmatchscore >= 10000) {
-		next;
+
+
+	if ($opt_w >= 0) {
+		if ($mirmatchscore > $opt_w) {
+			next;
+		}else{
+			my $tempscore = ($opt_w-$mirmatchscore)/($opt_w);
+			$offtargetscore = $offtargetscore*$tempscore;
+		}
 	}else{
-		my $tempscore = (10000-$wholematchscore)/10000;
+		my $tempscore = (20000-$mirmatchscore)/(20000);
 		$offtargetscore = $offtargetscore*$tempscore;
 	}
+
 
 	my @outarray = @array;
 	shift(@outarray);
@@ -84,7 +108,7 @@ while (<IN>) {
 	shift(@outarray);
 	shift(@outarray);
 	my $outarray = join("\t", @outarray);
-	print "$offtargetscore";
+	next if $offtargetscore == 0;
 	push @outputlines, "$array[0]\t$array[1]\t$array[2]\t$offtargetscore\t$array[4]\t$array[5]\t$wholematchscore\t$partmatchscore\t$mirmatchscore\t$outarray";
 	#print OUT "$array[0]\t$array[1]\t$array[2]\t$scorenew\t$scroes\t$array[5]\t$wholematchscore\t$partmatchscore\t$mirmatchscore\t$outarray\n";
 }
@@ -92,6 +116,8 @@ close IN;
 
 
 @outputlines = sort { (split(/\t/, $b))[3] <=> (split(/\t/, $a))[3] } @outputlines;
+
+
 my @output2;
 my $realrank = 0;
 my $scorebefore = (split(/\t/, $outputlines[0]))[3]+100;
@@ -114,20 +140,16 @@ for my $outputvar (@outputlines) {
 	my $outarray = join("\t", @linevar);
 	#print OUT "$one\t$two\t$three\t$scorenew\t$realrank\t$scores|$scorenew\t$ranks|$realrank\t$outarray\n";
 	push @output2, "$one\t$two\t$three\t$realrank\t$scorenew|$scores\t$realrank|$ranks\t$outarray";
-
 }
 undef @outputlines;
 
-
-@output2 = sort { max(split(/\|/, (split(/\t/, $a))[5])) <=> max(split(/\|/, (split(/\t/, $b))[5])) || sum(split(/\|/, (split(/\t/, $a))[5])) <=> sum(split(/\|/, (split(/\t/, $b))[5])) } @output2;
-
-
-for my $outputvar (@output2) {
-	my @linevar = split(/\t/, $outputvar);
-	my @ranks = split(/\|/, $linevar[5]);
-	$linevar[3] = max(@ranks);
-	my $outarray = join("\t", @linevar);
-	print OUT "$outarray\n";
+LINE: for my $outputvar (@output2) {
+	#my @linevar = split(/\t/, $outputvar);
+	#my @ranks = split(/\|/, $linevar[5]);
+	#$linevar[3] = max(@ranks);
+	#my $outarray = join("\t", @linevar);
+	#print OUT "$outarray\n";
+	print OUT "$outputvar\n";
 }
 close OUT;
 #print scalar @partmatch;
@@ -136,20 +158,3 @@ die "wrong partmatch $indexi\n" if scalar @partmatch != $indexi;
 die "wrong wholematch\n" if scalar @wholematch != $indexi;
 die "wrong mirmatch\n" if scalar @mirmatch != $indexi;
 
-#sub ranktheranks {
-#	my @arraya = split(/\t/, $_[0]);
-#	my @arrayb = split(/\t/, $_[1]);
-#	my @ranka = split(/\|/, $arraya[5]);
-#	my @rankb = split(/\|/, $arrayb[5]);
-#	my $minranka = min(@ranka);
-#	my $minrankb = min(@rankb);
-#	if ($minranka < $minrankb) {
-#		return -1;
-#	}elsif ($minranka > $minrankb) {
-#		return 1;
-#	}else{
-#		my $sumranka = sum(@ranka);
-#		my $sumrankb = sum(@rankb);
-#
-#	}
-#}

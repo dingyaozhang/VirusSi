@@ -3,8 +3,8 @@ use warnings;
 
 
 use Getopt::Std;
-use vars qw($opt_i $opt_o $opt_r $opt_c $opt_d);
-getopts('i:o:r:cd:');
+use vars qw($opt_i $opt_o $opt_r $opt_c $opt_d $opt_p);
+getopts('i:o:r:cd:p');
 
 my %refseqs;
 local $/ = ">";
@@ -65,8 +65,13 @@ while (<IN>) {
 	if ($. == 2) {
 		die "wrong length siRNA design needs to 21nt long" if length $mirnacandidate != 21;
 	}
+	my @parts;
+	if ($opt_p) {
+		@parts = &wholematch($mirnacandidate, \@refkeys, \%refseqs);
+	}else{
+		@parts = &partmatch($mirnacandidate, \@refkeys, \%refseqs);
+	}
 	
-	my @parts = &partmatch($mirnacandidate, \@refkeys, \%refseqs);
 	my $lenparts = scalar @parts;
 	my $nums = join('|', @parts);
 	my $out1 = shift(@array);
@@ -93,14 +98,16 @@ sub partmatch {
 	my %seqhash = %{$_[2]};
 	my $seedseq = substr $mrnatarget, 13, 8;
 	my @names;
+	my $mrnatarget2 = substr $mrnatarget, 2, 19;
 	for my $seqone (@seqnames) {
 		my $genomeseq = $seqhash{$seqone};
 		LINE: while ($genomeseq =~ m/$seedseq/g) {
 			my $beginposindex = (length $`) - 1;
-			my $matchregion = substr $genomeseq, $beginposindex-12, 21;
-			my $matchc = &acgtmatch($matchregion, $mrnatarget);
+			#my $matchregion = substr $genomeseq, $beginposindex-12, 21;
+			my $matchregion = substr $genomeseq, $beginposindex-10, 19;
+			my $matchc = &acgtmatch($matchregion, $mrnatarget2);
 			#print "$matchregion\n$seedseq\n";
-			if ($matchc >= 18) {
+			if ($matchc >= 16) {
 				push @names, $seqone;
 				last LINE;
 			}

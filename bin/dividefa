@@ -77,7 +77,7 @@ while (<IN>) {
 	my $systemcommand = "${scriptpath}muscle3.8.31_i86linux64 -in $tempfile -out $outfile &> $tosilent";
 	push @refincommands, $systemcommand;
 	push @outfiles, "$tempfile";
-	push @outfiles2, "$outfile";
+	push @outfiles2, "$.".".out";
 }
 
 

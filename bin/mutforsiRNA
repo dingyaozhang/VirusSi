@@ -17,7 +17,7 @@ open ANNO, "$opt_a/outfiles.txt" or die;
 
 while (<ANNO>) {
 	chomp;
-	push @files, $_;
+	push @files, "$opt_a/$_";
 }
 close ANNO;
 

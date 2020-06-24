@@ -5,6 +5,8 @@ getopts('i:o:');
 open IN, "$opt_i" or die;
 open OUT, '>', "$opt_o" or die;
 my @input;
+my $line1 = <IN>;
+print OUT "$line1";
 while (<IN>) {
 	print OUT "$_" if $_ =~ m/^#/;
 	next if $_ =~ m/^#/;

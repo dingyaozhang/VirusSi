@@ -9,9 +9,17 @@ my %opts;
 getopt('stueafgwlnbdxcopz',\%opts);
 my $max_fold=-18.40;
 
-if(!defined($opts{z})) {$opts{z}='.temptempsi';}
-$opts{z} =~ s/^\.\///;
-$opts{z} =~ s/\/$//;
+my $depthoftempfolder = "../";
+if(!defined($opts{z})) {$opts{z}='.temptempsi';}else{
+	die "Error: tempfolder path should not be an absolute path\n" if $opts{z} =~ m/^\//;
+	die "Error: tempfolder path does not support ../; just remove it\n" if $opts{z} =~ m/\.\.\//;
+	$opts{z} =~ s/^\.\///;
+	$opts{z} =~ s/\/$//;
+	$depthoftempfolder = "$opts{z}/";
+	$depthoftempfolder =~ s/([^\/]*\/)/..\//g;
+}
+
+
 unless (-e "./$opts{z}/") {
 	`mkdir ./$opts{z}/`;
 }
@@ -22,7 +30,7 @@ if (defined($opts{p})) {
 	if ($opts{p} =~ m/^\//) {
 		$rnaprogram = "$opts{p}";
 	}else{
-		$rnaprogram = "../../$opts{p}";
+		$rnaprogram = "../${depthoftempfolder}$opts{p}";
 	}
 }else{
 	$rnaprogram = $0;
@@ -32,7 +40,7 @@ if (defined($opts{p})) {
 			`chmod 777 $rnaprogram`;
 		}else{
 			`chmod 777 ${rnaprogram}RNAplfold`;
-			$rnaprogram = "../../$rnaprogram";
+			$rnaprogram = "../${depthoftempfolder}$rnaprogram";
 		}
 		
 	}else{
@@ -57,7 +65,7 @@ if(defined($opts{s}))
 	if ($opts{s} =~ m/^\//) {
 		$opts{s} = $opts{s};
 	}else{
-		$opts{s} = '../'."$opts{s}";
+		$opts{s} = "${depthoftempfolder}$opts{s}";
 	}
 
 		print SUR"1\n";
@@ -173,7 +181,7 @@ if(defined($opts{s}))
 else{
 	usage();
 }
-chdir "../";
+chdir "$depthoftempfolder";
 if (defined($opts{o})) {
 	unlink "$opts{z}/survey.log";
 	rmdir "./$opts{z}/";
@@ -581,7 +589,7 @@ sub produce_txt
 		if ($opts{o} =~ m/^\//) {
 			$outputfile = $opts{o};
 		}else{
-			$outputfile = "../../$opts{o}";
+			$outputfile = "../${depthoftempfolder}$opts{o}";
 		}
 	}
 	
@@ -599,8 +607,8 @@ sub produce_txt
 		my $position = $temparray[1] - 18-2;
 		my $tar = substr($seq,$position-1,21);
 		my $rev = revcomp($tar);
-		next if $tar =~ m/(.)\1{3}/;
-		next if $tar =~ m/A$/;
+		next if $tar =~ m/(.)\1{6}/;
+		next unless $tar =~ m/A$/;
 		if ($previousscore < $temparray[0]) {
 			$realrank += 1;
 			$previousscore = $realrank;

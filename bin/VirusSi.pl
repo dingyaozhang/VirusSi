@@ -15,21 +15,25 @@ my $length = 24;
 my $mode = 'predsi';
 my $tempfile = '.temptempsi';
 my $predict = 'predsi';
+my $verifytype = 'perfect';
 my ($offtarget, $tranome, $input, $p3utr, $strains, $ncores, 
- $RNAplfold, $output, $parameterRNAxs, $weight, $detail);
+ $RNAplfold, $output, $parameterRNAxs, $weight, $pmcuff, $umcuff, $mircuff);
 
-GetOptions ("mode=s" => \$mode,    # numeric
-              "predict=s"   => \$predict,      # string
+GetOptions ("mode=s" => \$mode,    
+              "predict=s"   => \$predict,     
               "strains=s"  => \$strains,
               "offtarget"  => \$offtarget,
               "p3utr=s"  => \$p3utr,
               "RNAplfold=s"  => \$RNAplfold,
               "transcriptome=s"  => \$tranome,
               "temp=s"  => \$tempfile,
-              "input=s"  => \$input,  # flag
+              "input=s"  => \$input, 
               "output=s"  => \$output,
               "weight=s"  => \$weight,
-              "detail=s"  => \$detail,
+              "pmcuff=f"  => \$pmcuff,
+              "umcuff=f"  => \$umcuff,
+              "mircuff=f"  => \$mircuff,
+              "verifytype=s" => \$verifytype,
 			  "ncores=i" => \$ncores)
 or die("Error in command line arguments\n");
 
@@ -42,6 +46,13 @@ if ($scriptsfolder =~ s/VirusSi\.pl$//) {
 	die "wrong program name\n";
 }
 
+unless ($input) {
+	die "no input files\n";
+}
+unless ($output) {
+	die "no output files\n";
+}
+
 if ($mode eq 'predsi') {
 	if ($predict eq 'predsi') {
 		my $addcommand = '';
@@ -51,7 +62,7 @@ if ($mode eq 'predsi') {
 		if ($tempfile) {
 			$addcommand .= " -t $tempfile ";
 		}
-		`perl ${scriptsfolder}predictsiRNA -i $input -o $output $addcommand`;	
+		run("perl ${scriptsfolder}predictsiRNA -i $input -o $output $addcommand");	
 	}elsif ($predict eq 'rnaxs') {
 		my $addcommand = '';
 		if ($RNAplfold) {
@@ -61,9 +72,9 @@ if ($mode eq 'predsi') {
 			$addcommand .= " -z $tempfile ";
 		}
 		if ($parameterRNAxs) {
-			$addcommand .= " parameterRNAxs ";
+			$addcommand .= " $parameterRNAxs ";
 		}
-		`perl ${scriptsfolder}portableRNAxs -s $input -o $output $addcommand`;
+		run("perl ${scriptsfolder}portableRNAxs -s $input -o $output $addcommand");
 	}else{
 		usage();
 	}
@@ -71,133 +82,267 @@ if ($mode eq 'predsi') {
 	if ($strains) {
 		if (-f $strains) {
 			if ($ncores) {
-				`perl ${scriptsfolder}dividefa -i $strains -r $input -o $tempfile -n $ncores`;
+				run("perl ${scriptsfolder}dividefa -i $strains -r $input -o $tempfile -t $tempfile -n $ncores");
 			}else{
-				`perl ${scriptsfolder}dividefa -i $strains -r $input -o $tempfile`;
+				run("perl ${scriptsfolder}dividefa -i $strains -r $input -o $tempfile -t $tempfile");
 			}			
-			`perl ${scriptsfolder}mutforsiRNA -a $tempfile -o $tempfile/anno.temp`;
-			`perl ${scriptsfolder}select_siRNA -i $output -r $tempfile/anno.temp -o $tempfile/outtemp.out`;
+			run("perl ${scriptsfolder}mutforsiRNA -a $tempfile -o $tempfile/anno.temp");
+			run("perl ${scriptsfolder}select_siRNA -i $output -r $tempfile/anno.temp -o $tempfile/outtemp.out");
 			my @tempin;
 			open TEMPIN, "$tempfile/outfiles.txt" or die;
 			while (<TEMPIN>) {
 				chomp;
-				push @tempin, $_;
+				push @tempin, "$tempfile/$_";
 			}
 			close TEMPIN;
-			unlink @tempin;
+			unlink @tempin or print "Error:Could not unlink files!: $!\n";
 			move("$tempfile/outtemp.out", $output);
 			unlink "$tempfile/anno.temp";
 			unlink "$tempfile/outfiles.txt";
 			rmdir "$tempfile";
-		}
-		if (-d $strains) {
+		}elsif (-d $strains) {
 			unless (-e $tempfile) {
-				`mkdir $tempfile`;
+				run("mkdir $tempfile");
 			}
-			`perl ${scriptsfolder}mutforsiRNA -a $strains -o $tempfile/anno.temp`;
-			`perl ${scriptsfolder}select_siRNA -i $output -r $tempfile/anno.temp -o $tempfile/outtemp.out`;
+			run("perl ${scriptsfolder}mutforsiRNA -a $strains -o $tempfile/anno.temp");
+			run("perl ${scriptsfolder}select_siRNA -i $output -r $tempfile/anno.temp -o $tempfile/outtemp.out");
 			move("$tempfile/outtemp.out", $output);
 			unlink "$tempfile/anno.temp";
 			rmdir "$tempfile";
+		}else{
+			die "Error: the name after the option --strains is no a file or folder\n";
 		}
 		
 	}
 	if ($offtarget) {
 		mkdir "$tempfile" unless -e $tempfile;
-		if ($ncores) {
-			my $addcommand = '';
-			if ($weight) {
-				$addcommand .= " -w $weight ";
-			}
-			`perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand`;
-			`perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand`;
-		}else{
-			my $addcommand = '';
-			if ($weight) {
-				$addcommand .= " -w $weight ";
-			}
-			`perl ${scriptsfolder}offtarget -i $output -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand`;
-			`perl ${scriptsfolder}offtarget -i $output -o $tempfile/offtranstemp.txt -r $tranome $addcommand`;
+		my $addcommand = '';
+		if ($weight) {
+			$addcommand .= " -w $weight ";
 		}
-		`perl ${scriptsfolder}evaluebyofftarget -i $output -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out`;
+		if ($ncores) {
+			run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand");
+			run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand");
+		}else{
+			run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand");
+			run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offtranstemp.txt -r $tranome $addcommand");
+		}
+		$addcommand = '';
+		if ($pmcuff) {
+			$addcommand .= " -p $pmcuff ";
+		}
+		if ($umcuff) {
+			$addcommand .= " -u $umcuff ";
+		}
+		if ($mircuff) {
+			$addcommand .= " -w $mircuff ";
+		}
+		run("perl ${scriptsfolder}evaluebyofftarget -i $output -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out $addcommand");
 		move("$tempfile/outtemp.out",$output);
 		unlink "$tempfile/offmirtemp.txt";
 		unlink "$tempfile/offtranstemp.txt";
 		rmdir "$tempfile";
 	}
-
+	mkdir "$tempfile" unless -e $tempfile;
+	run("perl ${scriptsfolder}integrateresult -i $output -o $tempfile/inteoutput.txt");
+	move("$tempfile/inteoutput.txt",$output);
+	unlink "$tempfile/inteoutput.txt";
+	rmdir "$tempfile";
 
 }elsif ($mode eq 'predesign') {
+	if ($ncores) {
+		require threads;
+		require threads::shared;
+		require POSIX;
+		POSIX->import(qw(floor));
+	}
+	my $ncoresrun = sub {
+		my @commands = @{$_[0]};
+		my @finalouts;
+		if ($ncores) {
+			my $targetsnum = scalar @commands;
+			my $oneblocknum = floor($targetsnum / $ncores) + 1;
+			my @chunks;
+			push @chunks, [splice(@commands, 0, $oneblocknum)] while @commands;
+			
+			my @threads;
+			foreach (@chunks) {
+			   push @threads, threads->new($_[1], $_);
+			}
+			foreach (@threads) {
+			   my $out1 = $_->join();
+			   push @finalouts, $out1;
+			}
+		}else{
+			my $out1 = &{$_[1]}(\@commands);
+			push @finalouts, $out1;
+		}
+		return \@finalouts;
+	};
+	my $runs = sub {
+		my @array = @{$_[0]};
+		for my $var (@array) {
+			my $warn = `$var`;
+			print "$warn";
+		}
+		return 1;
+	};
+
+
+	my $addcommand = '';
 	if ($predict eq 'predsi') {
-		my $addcommand = '';
 		if ($RNAplfold) {
 			$addcommand .= " -p $RNAplfold ";
 		}
-		if ($tempfile) {
-			$addcommand .= " -t $tempfile ";
-		}
-		`perl ${scriptsfolder}predictsiRNA -i $input -o $output $addcommand`;	
+		$addcommand = "perl ${scriptsfolder}predictsiRNA $addcommand";	
 	}elsif ($predict eq 'rnaxs') {
-		my $addcommand = '';
 		if ($RNAplfold) {
 			$addcommand .= " -p $RNAplfold ";
-		}
-		if ($tempfile) {
-			$addcommand .= " -z $tempfile ";
 		}
 		if ($parameterRNAxs) {
-			$addcommand .= " parameterRNAxs ";
+			$addcommand .= " $parameterRNAxs ";
 		}
-		`perl ${scriptsfolder}portableRNAxs -s $input -o $output $addcommand`;
+		$addcommand = "perl ${scriptsfolder}portableRNAxs $addcommand";
 	}else{
 		usage();
 	}
 
+	mkdir "$tempfile" unless -e $tempfile;
+	local $/ = ">";
+	open FAS, "$input" or die;
+	my $line1 = <FAS>;
+	my @outrelatives;
+	while (<FAS>) {
+		chomp;
+		my @faarray = split(/\n/, $_);
+		my $name = shift(@faarray);
+		my $sequence = join("", @faarray);
+		my $outrelative = "$tempfile/$.\.fa";
+		push @outrelatives, "$outrelative";
+		open OUTFA, '>', "$outrelative" or die;
+		print OUTFA ">$name\n$sequence\n";
+		close OUTFA;
+	}
+	close FAS;
+	local $/ = "\n";
+
+	my @outrelativescommands;
+	my $filei = 2;
+	if ($predict eq 'predsi') {
+	foreach my $file (@outrelatives) {
+		push @outrelativescommands, "$addcommand -i $file -o ${file}.out -t $tempfile/.temptempsi$filei";
+		$filei += 1;
+	}
+	}elsif ($predict eq 'rnaxs') {
+	foreach my $file (@outrelatives) {
+		#print "$addcommand -s $file -o ${file}.out -z $tempfile/.temptempsi$filei\n";
+		push @outrelativescommands, "$addcommand -s $file -o ${file}.out -z $tempfile/.temptempsi$filei";
+		$filei += 1;
+	}
+	}
+	&$ncoresrun(\@outrelativescommands, $runs);
+
+	open OUTPUT, '>', "$output" or die;
+	my $totaline1;
+	my $totali = 0;
+	my %seqhash;
+	foreach my $file (@outrelatives) {
+		open TEMP, "${file}.out" or die;
+		my $thisi = $file;
+		die "unknown wrong" unless $thisi =~ s/^$tempfile\///;
+		die "unknown wrong" unless $thisi =~ s/\.fa$//;
+		my $line1 = <TEMP>;
+		print OUTPUT "$line1" if $totali == 0;
+		$totali += 1;
+		while (my $templine = <TEMP>) {
+			chomp($templine);
+			my @temparray = split(/\t/, $templine);
+			my $pos = shift(@temparray);
+			$pos = "$pos|$thisi";
+			my $seqtar = $temparray[0];
+			if (exists($seqhash{$seqtar})) {
+				$seqhash{$seqtar} += 1;
+				next;
+			}else{
+				$seqhash{$seqtar} = 1;
+			}
+			my $out1line = join("\t", @temparray);
+			print OUTPUT "$pos\t$out1line\n";
+		}
+		close TEMP;
+	}
+	close OUTPUT;
+
+	
 
 	if ($offtarget) {
 		mkdir "$tempfile" unless -e $tempfile;
-		if ($ncores) {
-			my $addcommand = '';
-			if ($weight) {
-				$addcommand .= " -w $weight ";
-			}
-			`perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand`;
-			`perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand`;
-		}else{
-			my $addcommand = '';
-			if ($weight) {
-				$addcommand .= " -w $weight ";
-			}
-			`perl ${scriptsfolder}offtarget -i $output -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand`;
-			`perl ${scriptsfolder}offtarget -i $output -o $tempfile/offtranstemp.txt -r $tranome $addcommand`;
+		my $addcommand = '';
+		if ($weight) {
+			$addcommand .= " -w $weight ";
 		}
-		`perl ${scriptsfolder}evaluebyofftarget -i $output -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out`;
+		if ($ncores) {
+			run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand");
+			run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand");
+		}else{
+			run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand");
+			run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offtranstemp.txt -r $tranome $addcommand");
+		}
+		$addcommand = '';
+		if ($pmcuff) {
+			$addcommand .= " -p $pmcuff ";
+		}
+		if ($umcuff) {
+			$addcommand .= " -u $umcuff ";
+		}
+		if ($mircuff) {
+			$addcommand .= " -w $mircuff ";
+		}
+		run("perl ${scriptsfolder}evaluebyofftarget -i $output -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out $addcommand");
 		move("$tempfile/outtemp.out",$output);
 		unlink "$tempfile/offmirtemp.txt";
 		unlink "$tempfile/offtranstemp.txt";
 		rmdir "$tempfile";
 	}
-	
-	mkdir "$tempfile" unless -e $tempfile;
 
-	my $addcommand = '';
-	if ($detail) {
-		$addcommand .= " -d $tempfile/detail.unsort ";
+	{
+		open INPUT, "$output" or die;
+		open OUTPUT, '>', "$tempfile/count.unsort" or die;
+		my $line1 = <INPUT>;
+		chomp($line1);
+		my @line1 = split(/\t/, $line1);
+		my $line11 = shift(@line1);
+		my $line12 = shift(@line1);
+		my $line13 = shift(@line1);
+		my $line1new = join("\t", @line1);
+		print OUTPUT "$line11\t$line12\t$line13\tCover_Number\t$line1new\n";
+		while (<INPUT>) {
+			chomp;
+			my @array = split(/\t/, $_);
+			my $out1 = shift(@array);
+			my $out2 = shift(@array);
+			my $out3 = shift(@array);
+			my $rest = join("\t", @array);
+			print OUTPUT "$out1\t$out2\t$out3\t$seqhash{$out2}\t$rest\n";
+		}
+		close OUTPUT;
+		close INPUT;
+		run("perl ${scriptsfolder}sortvsi -i $tempfile/count.unsort -o $tempfile/count.sort");
 	}
-
-	`perl ${scriptsfolder}verifysi -i $output -r $strains -o $tempfile/output.unsort $addcommand`;
-	`perl ${scriptsfolder}sortvsi -i $tempfile/output.unsort -o $tempfile/output.sort`;
-	`perl ${scriptsfolder}sortvsi -i $tempfile/detail.unsort -o $tempfile/detail.sort` if $detail;
-	move("$tempfile/output.sort",$output);
-	move("$tempfile/detail.sort",$detail) if $detail;
-	unlink "$tempfile/output.unsort";
-	unlink "$tempfile/detail.unsort";
+	unlink "$tempfile/count.unsort";
+	move("$tempfile/count.sort",$output);
+	foreach my $file (@outrelatives) {
+		unlink $file or print "Could not unlink $file: $!";
+	}
+	foreach my $file (@outrelatives) {
+		unlink "${file}.out" or print "Could not unlink $file: $!";
+	}
 	rmdir "$tempfile";
 }elsif ($mode eq 'mapfastas') {
 	if ($ncores) {
-		`perl ${scriptsfolder}dividefa -i $strains -r $input -o $output -t $output -n $ncores`;
+		run("perl ${scriptsfolder}dividefa -i $strains -r $input -o $output -t $output -n $ncores");
 	}else{
-		`perl ${scriptsfolder}dividefa -i $strains -r $input -o $output -t $output`;
+		run("perl ${scriptsfolder}dividefa -i $strains -r $input -o $output -t $output");
 	}
 }else{
 	usage()
@@ -219,3 +364,8 @@ die
 ';
 }
 	
+sub run {
+	my $runout = `$_[0]`;
+	print "$runout";
+	return 1;
+}
