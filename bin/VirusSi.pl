@@ -16,17 +16,17 @@ my $mode = 'predsi';
 my $tempfile = '.temptempsi';
 my $predict = 'predsi';
 my $verifytype = 'perfect';
-my $limitnumber = 200;
+my $limitnumber = 50;
 my $repeatnum = 2;
 my ($offtarget, $offtargetperfect, $tranome, $input, $p3utr, $strains, $ncores, 
- $RNAplfold, $output, $parameterRNAxs, $weight, $pmcuff, $umcuff, $mircuff, $range, $greedy);
+ $RNAplfold, $output, $parameterRNAxs, $weight, $pmcuff, $umcuff, $mircuff, $range, $sumtype);
 
 GetOptions ("mode=s" => \$mode,    
               "predict=s"   => \$predict,     
               "strains=s"  => \$strains,
               "offtarget"  => \$offtarget,
               "offtargetperfect"  => \$offtargetperfect,
-              "greedy"  => \$greedy,
+              "sumtype=s"  => \$sumtype,
               "p3utr=s"  => \$p3utr,
               "RNAplfold=s"  => \$RNAplfold,
               "transcriptome=s"  => \$tranome,
@@ -327,7 +327,31 @@ if ($mode eq 'predsi') {
 		close OUTPUT;
 		close INPUT;
 	}
-	if ($greedy) {
+	
+	if ($sumtype && $sumtype eq 'SGAR') {
+		my $addcommand = '';
+		if ($offtarget||$offtargetperfect) {
+			$addcommand .= "-r $tranome -m $p3utr ";
+			if ($weight) {
+				$addcommand .= "-w $weight ";
+			}
+			if ($pmcuff) {
+				$addcommand .= "-P $pmcuff ";
+			}
+			if ($umcuff) {
+				$addcommand .= "-A $umcuff ";
+			}
+			if ($mircuff) {
+				$addcommand .= "-M $mircuff ";
+			}
+		}else{
+			$addcommand .= "-F ";
+		}
+		run("perl ${scriptsfolder}SGAR -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand");
+		unlink "$tempfile/count.unsort";
+		move("$tempfile/count.sort",$output);
+		rmdir "$tempfile";
+	}elsif($sumtype && $sumtype eq 'greedy') {
 		my $addcommand = '';
 		if ($offtarget||$offtargetperfect) {
 			$addcommand .= "-r $tranome -m $p3utr ";
@@ -351,71 +375,29 @@ if ($mode eq 'predsi') {
 		move("$tempfile/count.sort",$output);
 		rmdir "$tempfile";
 	}else{
-		if ($offtargetperfect) {
-			my $addcommand = '';
+		die "There is no choice of algorithm. For --sumtype, you can use:\n SGAR greedy\n";
+		my $addcommand = '';
+		if ($offtarget||$offtargetperfect) {
+			$addcommand .= "-r $tranome -m $p3utr ";
 			if ($weight) {
-				$addcommand .= " -w $weight ";
+				$addcommand .= "-w $weight ";
 			}
-			if ($ncores) {
-				run("perl ${scriptsfolder}offtargetncore -i $tempfile/count.unsort -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand");
-				run("perl ${scriptsfolder}offtargetncore -i $tempfile/count.unsort -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand");
-			}else{
-				run("perl ${scriptsfolder}offtarget -i $tempfile/count.unsort -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand");
-				run("perl ${scriptsfolder}offtarget -i $tempfile/count.unsort -o $tempfile/offtranstemp.txt -r $tranome $addcommand");
-			}
-			$addcommand = '';
 			if ($pmcuff) {
-				$addcommand .= " -p $pmcuff ";
+				$addcommand .= "-P $pmcuff ";
 			}
 			if ($umcuff) {
-				$addcommand .= " -u $umcuff ";
+				$addcommand .= "-A $umcuff ";
 			}
 			if ($mircuff) {
-				$addcommand .= " -w $mircuff ";
+				$addcommand .= "-M $mircuff ";
 			}
-			run("perl ${scriptsfolder}evaluebyofftargetnew -k -i $tempfile/count.unsort -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out $addcommand");
-			move("$tempfile/outtemp.out", "$tempfile/count.unsort");
-			unlink "$tempfile/offmirtemp.txt";
-			unlink "$tempfile/offtranstemp.txt";
+		}else{
+			$addcommand .= "-F ";
 		}
-		run("perl ${scriptsfolder}sortvsi -i $tempfile/count.unsort -o $tempfile/count.sort -n $totali -c $repeatnum -l $limitnumber");
+		run("perl ${scriptsfolder}weightedgreedyncore -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand");
 		unlink "$tempfile/count.unsort";
 		move("$tempfile/count.sort",$output);
-	
 		rmdir "$tempfile";
-
-	
-		if ($offtarget) {
-		unless ($offtargetperfect) {
-			mkdir "$tempfile" unless -e $tempfile;
-			my $addcommand = '';
-			if ($weight) {
-				$addcommand .= " -w $weight ";
-			}
-			if ($ncores) {
-				run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offmirtemp.txt -r $p3utr -n $ncores -m $addcommand");
-				run("perl ${scriptsfolder}offtargetncore -i $output -o $tempfile/offtranstemp.txt -r $tranome -n $ncores $addcommand");
-			}else{
-				run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offmirtemp.txt -r $p3utr -m $addcommand");
-				run("perl ${scriptsfolder}offtarget -i $output -o $tempfile/offtranstemp.txt -r $tranome $addcommand");
-			}
-			$addcommand = '';
-			if ($pmcuff) {
-				$addcommand .= " -p $pmcuff ";
-			}
-			if ($umcuff) {
-				$addcommand .= " -u $umcuff ";
-			}
-			if ($mircuff) {
-				$addcommand .= " -w $mircuff ";
-			}
-			run("perl ${scriptsfolder}evaluebyofftargetnew -i $output -m $tempfile/offmirtemp.txt -t $tempfile/offtranstemp.txt -o $tempfile/outtemp.out $addcommand");
-			move("$tempfile/outtemp.out",$output);
-			unlink "$tempfile/offmirtemp.txt";
-			unlink "$tempfile/offtranstemp.txt";
-			rmdir "$tempfile";
-		}
-		}
 	}
 
 
