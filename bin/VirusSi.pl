@@ -375,7 +375,7 @@ if ($mode eq 'predsi') {
 		move("$tempfile/count.sort",$output);
 		rmdir "$tempfile";
 	}else{
-		die "There is no choice of algorithm. For --sumtype, you can use:\n SGAR greedy\n";
+		die "There is no choice of algorithm.\nThe default algorithm is selected.\n";
 		my $addcommand = '';
 		if ($offtarget||$offtargetperfect) {
 			$addcommand .= "-r $tranome -m $p3utr ";
