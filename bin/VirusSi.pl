@@ -19,7 +19,7 @@ my $verifytype = 'perfect';
 my $limitnumber = 50;
 my $repeatnum = 2;
 my ($offtarget, $offtargetperfect, $tranome, $input, $p3utr, $strains, $ncores, 
- $RNAplfold, $output, $parameterRNAxs, $weight, $pmcuff, $umcuff, $mircuff, $range, $sumtype);
+ $RNAplfold, $output, $parameterRNAxs, $weight, $pmcuff, $umcuff, $mircuff, $range, $sumtype, $allowlist, $banlist);
 
 GetOptions ("mode=s" => \$mode,    
               "predict=s"   => \$predict,     
@@ -34,6 +34,8 @@ GetOptions ("mode=s" => \$mode,
               "input=s"  => \$input, 
               "output=s"  => \$output,
               "weight=s"  => \$weight,
+              "allow=s"  => \$allowlist,
+              "ban=s"  => \$banlist,
               "pmcuff=f"  => \$pmcuff,
               "umcuff=f"  => \$umcuff,
               "mircuff=f"  => \$mircuff,
@@ -210,6 +212,11 @@ if ($mode eq 'predsi') {
 			$addcommand .= " $parameterRNAxs ";
 		}
 		$addcommand = "perl ${scriptsfolder}portableRNAxs $addcommand";
+	}elsif($predict eq 'multifapredsi'){
+		if ($RNAplfold) {
+			$addcommand .= " -p $RNAplfold ";
+		}
+		$addcommand = "perl ${scriptsfolder}multifapredictsiRNA $addcommand";	
 	}else{
 		usage();
 	}
@@ -347,7 +354,16 @@ if ($mode eq 'predsi') {
 		}else{
 			$addcommand .= "-F ";
 		}
-		run("perl ${scriptsfolder}SGAR -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand");
+		if ($banlist) {
+			if ($allowlist) {
+				run("perl ${scriptsfolder}SGARallowban -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -a $allowlist -b $banlist");
+			}else{
+				run("perl ${scriptsfolder}SGARallowban -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -b $banlist");
+			}
+		}else{
+			run("perl ${scriptsfolder}SGAR -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand");
+		}
+		
 		unlink "$tempfile/count.unsort";
 		move("$tempfile/count.sort",$output);
 		rmdir "$tempfile";

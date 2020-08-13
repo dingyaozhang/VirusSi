@@ -607,8 +607,8 @@ sub produce_txt
 		my $position = $temparray[1] - 18-2;
 		my $tar = substr($seq,$position-1,21);
 		my $rev = revcomp($tar);
-		#next if $tar =~ m/(.)\1{6}/;
-		#next unless $tar =~ m/A$/;
+		next if $tar =~ m/(.)\1{6}/;
+		next unless $tar =~ m/A$/;
 		if ($previousscore < $temparray[0]) {
 			$realrank += 1;
 			$previousscore = $realrank;
