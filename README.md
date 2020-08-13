@@ -4,16 +4,17 @@ VirusSi incorporates considerations on siRNA properties, target RNA structure, o
 ##Quick Start
 Basic function to design antiviral siRNAs (Transcript_3primer_utr_sequence.fa and transcriptome_sequence.fa could be gotten by running GenomeData/GenomeData.sh.)
 ```
-perl bin/VirusSi.pl --input virus_reference_genome.fa --output designed_siRNAs.txt --strains virus_strains_genomes.fa --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --ncores 6
+perl bin/VirusSi.pl --input virus_reference_genome.fa --output designed_siRNAs.txt --strains virus_strains_genomes.fa --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --weight weighted_of_gene.txt
 ```
 Step to evaluate genetic variations is time-consuming. So design of antiviral siRNAs could be divided into two steps.
 ```
 perl bin/VirusSi.pl --mode mapfastas --input virus_reference_genome.fa --strains virus_strains_genomes.fa --output strains_ref/ --ncores 6
-perl bin/VirusSi.pl --input virus_reference_genome.fa --output designed_siRNAs.txt --strains strains_ref/ --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --ncores 6
+perl bin/VirusSi.pl --input virus_reference_genome.fa --output designed_siRNAs.txt --strains strains_ref/ --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --weight weighted_of_gene.txt
 ```
 Function to design siRNAs targeting potentially emerging viruses in the future
 ```
-perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa --output predesigned_siRNAs.txt --greedy
+perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt
+perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --weight weighted_of_gene.txt --sumtype SGAR
 ```
 
 ## Option Explanation
@@ -46,8 +47,8 @@ the cutoff standard for evaluating offtarget effects as siRNA perfect match.
 the cutoff standard for evaluating offtarget effects as siRNA unperfect match.
 --mircuff
 the cutoff standard for evaluating offtarget effects as miRNA match.
---greedy
-Use greedy algorithm for pre-design model
+--sumtype
+Select the proper method to pre-design siRNAs (SGAR/greedy(GAR))
 --limitnum
 the limitation of lines of output file in pre-design mode
 --repeatnum
