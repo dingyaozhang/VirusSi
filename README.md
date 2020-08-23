@@ -16,7 +16,11 @@ Function to design siRNAs targeting potentially emerging viruses in the future
 perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt
 perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --weight weighted_of_gene.txt --sumtype SGAR
 ```
-
+Function to design siRNAs considering experiment results
+```
+perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt
+perl bin/VirusSi.pl --mode predesign --input strains_genomes_of_a_viral_class.fa  --output predesigned_siRNAs.txt --offtarget --p3utr transcript_3primer_utr_sequence.fa --transcriptome transcriptome_sequence.fa --weight weighted_of_gene.txt --sumtype SGAR --allow experiment_verified_siRNAs.txt --ban experiment_excluded_siRNAs.txt
+```
 ## Option Explanation
 ```
 --input
@@ -55,6 +59,10 @@ the limitation of lines of output file in pre-design mode
 the penalty factor for pre-design mode
 --offtargetperfect
 Include a perfect instead of faster evaluation on siRNA offtarget effect in mode Predesign without greedy algorithm
+--allow 
+List of siRNAs which are verified by the experiments
+--ban
+List of siRNAs which are excluded by the experiments
 ```
 ## Dependencies
 Perl5 is needed. All the other packages which are needed are put in the bin/. No other packages are required for the program. The ViennaRNA Package is needed for all functions.
