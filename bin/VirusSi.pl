@@ -356,9 +356,9 @@ if ($mode eq 'predsi') {
 		}
 		if ($banlist) {
 			if ($allowlist) {
-				run("perl ${scriptsfolder}SGARallowban -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -a $allowlist -b $banlist");
+				run("perl ${scriptsfolder}SGARallowban2 -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -a $allowlist -b $banlist");
 			}else{
-				run("perl ${scriptsfolder}SGARallowban -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -b $banlist");
+				run("perl ${scriptsfolder}SGARallowban2 -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand -b $banlist");
 			}
 		}else{
 			run("perl ${scriptsfolder}SGAR -i $tempfile/count.unsort -o $tempfile/count.sort -c $repeatnum -l $limitnumber -n $ncores $addcommand");
